@@ -1,9 +1,11 @@
 import numpy as np
+from numba import jit, cuda
 
 ### Functions for you to fill in ###
 
 
 
+#@jit(target_backend='cuda')
 def polynomial_kernel(X, Y, c, p):
     """
         Compute the polynomial kernel between two matrices X and Y::
@@ -24,7 +26,7 @@ def polynomial_kernel(X, Y, c, p):
     return kernel_matrix
 
 
-
+#@jit(target_backend='cuda')
 def rbf_kernel(X, Y, gamma):
     """
         Compute the Gaussian RBF kernel between two matrices X and Y::

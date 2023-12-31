@@ -260,3 +260,32 @@ def run_kernel_softmax_on_MNIST(kernel_train, train_y, kernel_test, test_y, temp
 
 ## Don't do it, softmax using kernel method is too computationally heavy, my pc gave up many times
 ## PC specs: 5900x, 64gb ram and 21gb swap
+
+n = 5000
+n_test = 2000
+k = 10  # number of categories
+indices_train = np.random.permutation(n)
+indices_test = np.random.permutation(n_test)
+
+train_x_trunc = train_x[indices_train,:]
+train_y_trunc = train_y[indices_train]
+test_x_trunc = test_x[indices_test,:]
+test_y_trunc = test_y[indices_test]
+
+# Find PCA representation of training and test sets
+n_components = 18
+pcs = principal_components(train_x_trunc)
+train_pca = project_onto_PC(train_x_trunc, pcs, n_components, feature_means)
+test_pca = project_onto_PC(test_x_trunc, pcs, n_components, feature_means)
+
+# Kernel matrix for training data
+kernel_train = rbf_kernel(train_pca, train_pca, gamma=0.5)
+
+# Kernel matrix for test data
+kernel_test = rbf_kernel(train_pca, test_pca, gamma=0.5)
+
+test_error_kernel, alphas = run_kernel_softmax_on_MNIST(kernel_train, train_y_trunc, \
+                                                        kernel_test, test_y_trunc, temp_parameter=0.5, \
+                                                        lambda_factor=0.01, k=10, learning_rate=0.3, num_iterations=150)
+
+print("Test error for kernelized softmax regression:", test_error_kernel)
