@@ -32,7 +32,20 @@ def compute_probabilities(X, theta, temp_parameter):
         H - (k, n) NumPy array, where each entry H[j][i] is the probability that X[i] is labeled as j
     """
     #YOUR CODE HERE
-    raise NotImplementedError
+    # Compute the matrix of theta*X (each row is a category, column an example)
+    R = (theta.dot(X.T))/ temp_parameter
+
+    # Compute fixed deduction factor for numerical stability (c is a vector: lxn)
+    c = np.max(R, axis=0)
+
+    # Compute H matrix
+    H = np.exp(R-c)
+
+    # Divide H by the normalizing term
+    H = H/np.sum(H, axis=0)
+
+    return H
+
 
 def compute_cost_function(X, Y, theta, lambda_factor, temp_parameter):
     """
@@ -51,7 +64,29 @@ def compute_cost_function(X, Y, theta, lambda_factor, temp_parameter):
         c - the cost value (scalar)
     """
     #YOUR CODE HERE
-    raise NotImplementedError
+
+    #Get number of labels
+    k = theta.shape[0]
+
+    #Get number of examples
+    n = X.shape[0]
+
+    # Clip prob matrix to avoid NaN instances
+    clip_prob_matrix = np.clip(compute_probabilities(X, theta, temp_parameter), 1e-15, 1-1e-15)
+
+    # Take the log of the matrix of probabilities
+    log_clip_matrix = np.log(clip_prob_matrix)
+
+    # Create a sparse matrix of [[y(i) == j]]
+    M = sparse.coo_matrix(([1]*n, (Y, range(n))), shape = (k,n)).toarray()
+
+    # Only add terms of log(matrix of prob) where M == 1
+    error_term = (-1/n)*np.sum(log_clip_matrix[M == 1])
+
+    # Regularization term
+    reg_term = (lambda_factor/2)*np.linalg.norm(theta)**2
+
+    return error_term + reg_term
 
 def run_gradient_descent_iteration(X, Y, theta, alpha, lambda_factor, temp_parameter):
     """
@@ -71,7 +106,25 @@ def run_gradient_descent_iteration(X, Y, theta, alpha, lambda_factor, temp_param
         theta - (k, d) NumPy array that is the final value of parameters theta
     """
     #YOUR CODE HERE
-    raise NotImplementedError
+    # Get number of labels
+    k = theta.shape[0]
+
+    # Get number of examples
+    n = X.shape[0]
+
+    # Create spare matrix of [[y(i) == j]]
+    M = sparse.coo_matrix(([1]*n, (Y, range(n))), shape=(k,n)).toarray()
+
+    # Matrix of Probabilities
+    P = compute_probabilities(X, theta, temp_parameter)
+
+    # Gradient matrix of theta
+    grad_theta = (-1/(temp_parameter*n))*((M - P) @ X) + lambda_factor*theta
+
+    # Gradient descent update of theta matrix
+    theta = theta - alpha*grad_theta
+
+    return theta
 
 def update_y(train_y, test_y):
     """
@@ -91,7 +144,10 @@ def update_y(train_y, test_y):
                     for each datapoint in the test set
     """
     #YOUR CODE HERE
-    raise NotImplementedError
+    train_y_mod3 = np.mod(train_y,3)
+    test_y_mod3 = np.mod(test_y,3)
+
+    return (train_y_mod3,test_y_mod3)
 
 def compute_test_error_mod3(X, Y, theta, temp_parameter):
     """
@@ -109,7 +165,8 @@ def compute_test_error_mod3(X, Y, theta, temp_parameter):
         test_error - the error rate of the classifier (scalar)
     """
     #YOUR CODE HERE
-    raise NotImplementedError
+    y_pred = get_classification(X, theta, temp_parameter)
+    return 1 - (np.mod(y_pred,3)==Y).mean()
 
 def softmax_regression(X, Y, temp_parameter, alpha, lambda_factor, k, num_iterations):
     """
@@ -167,4 +224,72 @@ def plot_cost_function_over_time(cost_function_history):
 def compute_test_error(X, Y, theta, temp_parameter):
     error_count = 0.
     assigned_labels = get_classification(X, theta, temp_parameter)
+    return 1 - np.mean(assigned_labels == Y)
+
+def kernel_probabilities(alpha, kernel_matrix, temp_parameter):
+    R = alpha.dot(kernel_matrix)/temp_parameter
+
+    c = np.max(R, axis=0)
+
+    H = np.exp(R-c)
+
+    H = H/np.sum(H, axis=0)
+
+    return H
+
+def kernel_cost_function(alpha, kernel_matrix, Y, lambda_factor, temp_parameter):
+    k = alpha.shape[0]
+    n = kernel_matrix.shape[0]
+
+    clip_prop_matrix = np.clip(kernel_probabilities(alpha, kernel_matrix, temp_parameter), 1e-15, 1-1e-15)
+
+    log_clip_matrix = np.log(clip_prop_matrix)
+
+    M = sparse.coo_matrix(([1]*n, (Y, range(n))), shape=(k,n)).toarray()
+
+    error_term = (-1/n)*np.sum(log_clip_matrix[M==1])
+
+    reg_term = (lambda_factor/2)*np.linalg.norm(alpha)**2
+
+    return error_term + reg_term
+
+
+def kernel_gradient(alpha, kernel_matrix, Y, lambda_factor, temp_parameter):
+    k = alpha.shape[0]
+    n = kernel_matrix.shape[0]
+    M = sparse.coo_matrix(([1]*n, (Y, range(n))), shape=(k,n)).toarray()
+    P = kernel_probabilities(alpha, kernel_matrix, temp_parameter)
+
+    grad_alpha = (-1/(temp_parameter*n))*((M-P) @ kernel_matrix) + lambda_factor*alpha
+
+    return grad_alpha
+
+def run_kernel_gradient_descent_iteration(alpha, kernel_matrix, Y, learning_rate, lambda_factor, temp_parameter):
+
+    # Gradient matrix of theta
+    grad_alpha = kernel_gradient(alpha, kernel_matrix, Y, \
+                                         lambda_factor, temp_parameter)
+
+    # Gradient descent update of theta matrix
+    alpha_matrix = alpha - learning_rate*grad_alpha
+
+    return alpha_matrix
+
+def softmax_kernel_regression(Y, kernel_matrix, temp_parameter, learning_rate, lambda_factor, k, num_iterations):
+    alphas = np.zeros([k, len(Y)])
+    cost_function_progression = []
+    for i in range(num_iterations):
+        cost_function_progression.append(kernel_cost_function(alphas, kernel_matrix, \
+                                                                      Y, lambda_factor, temp_parameter))
+        alphas = run_kernel_gradient_descent_iteration(alphas, kernel_matrix, Y, learning_rate, \
+                                                       lambda_factor, temp_parameter)
+    return alphas, cost_function_progression
+
+def kernel_classification(alpha, kernel_matrix, temp_parameter):
+
+    probabilities = kernel_probabilities(alpha, kernel_matrix, temp_parameter)
+    return np.argmax(probabilities, axis = 0)
+
+def kernel_test_error(alpha, kernel_matrix, Y, temp_parameter):
+    assigned_labels = kernel_classification(alpha, kernel_matrix, temp_parameter)
     return 1 - np.mean(assigned_labels == Y)

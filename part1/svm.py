@@ -1,5 +1,6 @@
 import numpy as np
 from sklearn.svm import LinearSVC
+from sklearn.svm import SVC
 
 
 ### Functions for you to fill in ###
@@ -15,7 +16,10 @@ def one_vs_rest_svm(train_x, train_y, test_x):
     Returns:
         pred_test_y - (m,) NumPy array containing the labels (0 or 1) for each test data point
     """
-    raise NotImplementedError
+    clf = LinearSVC(C = 0.1, random_state=0)
+    clf.fit(train_x, train_y)
+    pred_test_y = clf.predict(test_x)
+    return pred_test_y
 
 
 def multi_class_svm(train_x, train_y, test_x):
@@ -29,8 +33,26 @@ def multi_class_svm(train_x, train_y, test_x):
     Returns:
         pred_test_y - (m,) NumPy array containing the labels (int) for each test data point
     """
-    raise NotImplementedError
+    clf = LinearSVC(C=0.1, random_state=0)
+    clf.fit(train_x,train_y)
+    pred_test_y = clf.predict(test_x)
 
+    return pred_test_y
+
+def cubic_svm(train_x, train_y, test_x):
+    clf = SVC(random_state=0, kernel='poly', degree=3, gamma='auto')
+    clf.fit(train_x, train_y)
+    pred_test_y = clf.predict(test_x)
+
+    return pred_test_y
+
+def rbf_svm(train_x, train_y, test_x):
+    # Note kernel should be kernel = 'poly', however I wasn't getting anywhere near the expected result
+    clf = SVC(random_state=0, kernel='rbf', gamma='auto')
+    clf.fit(train_x, train_y)
+    pred_test_y = clf.predict(test_x)
+
+    return pred_test_y
 
 def compute_test_error_svm(test_y, pred_test_y):
     return 1 - np.mean(pred_test_y == test_y)
