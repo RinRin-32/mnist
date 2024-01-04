@@ -27,7 +27,7 @@ class CNN(nn.Module):
         self.flatten = Flatten()
         self.linear1 = nn.Linear(2880, 64)
         self.dropout = nn.Dropout(p = 0.5)
-        self.linear2 = nn.Linear(64,20)
+        self.linear2 = nn.Linear(64,32)
 
     def forward(self, x):
 
